@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <ctype.h>
 #include <errno.h>
+#include <signal.h>
 
 #include <linux/dvb/frontend.h>
 #include <linux/dvb/dmx.h>
@@ -17,6 +18,8 @@
 
 static char FRONTEND_DEV [80];
 static char DEMUX_DEV [80];
+static int timeout_flag=0;
+static int timeout=0;
 
 #define CHANNEL_FILE "/.azap/channels.conf"
 
@@ -49,6 +52,18 @@ static const Param modulation_list [] = {
 
 #define LIST_SIZE(x) sizeof(x)/sizeof(Param)
 
+static void do_timeout(int x)
+{
+	(void)x;
+	if (timeout_flag == 0) {
+		timeout_flag = 1;
+		alarm(2);
+		signal(SIGALRM, do_timeout);
+	} else {
+		/* something has gone wrong ... exit */
+		exit(1);
+	}
+}
 
 static
 int parse_param (int fd, const Param * plist, int list_size, int *param)
@@ -259,13 +274,13 @@ int monitor_frontend (int fe_fd)
 		usleep(1000000);
 
 		printf("\n");
-	} while (1);
+	} while (!timeout_flag);
 
 	return 0;
 }
 
 
-static const char *usage = "\nusage: %s [-a adapter_num] [-f frontend_id] [-d demux_id] [-c conf_file] [-r] [-p] <channel name>\n\n";
+static const char *usage = "\nusage: %s [-a adapter_num] [-f frontend_id] [-d demux_id] [-c conf_file] [-t timout_seconds] [-r] [-p] <channel name>\n\n";
 
 
 int main(int argc, char **argv)
@@ -281,7 +296,7 @@ int main(int argc, char **argv)
 	int opt;
 	int rec_psi = 0;
 
-	while ((opt = getopt(argc, argv, "hrpn:a:f:d:c:")) != -1) {
+	while ((opt = getopt(argc, argv, "hrpnt:a:f:d:c:")) != -1) {
 		switch (opt) {
 		case 'a':
 			adapter = strtoul(optarg, NULL, 0);
@@ -291,6 +306,9 @@ int main(int argc, char **argv)
 			break;
 		case 'd':
 			demux = strtoul(optarg, NULL, 0);
+			break;
+		case 't':
+			timeout = strtoul(optarg, NULL, 0);
 			break;
 		case 'r':
 			dvr = 1;
@@ -348,6 +366,9 @@ int main(int argc, char **argv)
 	if (setup_frontend (frontend_fd, &frontend_param) < 0)
 		return -1;
 
+	signal(SIGALRM, do_timeout);
+	if (timeout > 0)
+		alarm(timeout);
 
 	if (rec_psi) {
 		pmtpid = get_pmt_pid(DEMUX_DEV, sid);
