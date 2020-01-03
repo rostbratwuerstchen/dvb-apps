@@ -36,6 +36,14 @@
 
 #define CA_NODE "/dev/dvb/adapter0/ca0"
 
+#ifndef CA_SET_PID
+typedef struct ca_pid {
+	unsigned int pid;
+	int index;
+} ca_pid_t;
+#define CA_SET_PID 42424242
+#endif
+
 static int dst_comms(int cafd, uint32_t tag, uint32_t function, struct ca_msg *msg)
 {
 	if (tag) {
