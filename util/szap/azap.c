@@ -19,7 +19,7 @@
 static char FRONTEND_DEV [80];
 static char DEMUX_DEV [80];
 static int timeout_flag=0;
-static int timeout=0;
+static int silent=0,timeout=0;
 
 #define CHANNEL_FILE "/.azap/channels.conf"
 
@@ -239,7 +239,8 @@ int setup_frontend (int fe_fd, struct dvb_frontend_parameters *frontend)
 	}
 
 	/* TODO! Some frontends need to be explicit delivery system */
-	printf ("tuning to %i Hz\n", frontend->frequency);
+	if(!silent)
+		printf ("tuning to %i Hz\n", frontend->frequency);
 
 	if (ioctl(fe_fd, FE_SET_FRONTEND, frontend) < 0) {
 		PERROR("ioctl FE_SET_FRONTEND failed");
@@ -264,23 +265,25 @@ int monitor_frontend (int fe_fd)
 		ioctl(fe_fd, FE_READ_BER, &ber);
 		ioctl(fe_fd, FE_READ_UNCORRECTED_BLOCKS, &uncorrected_blocks);
 
-		printf ("status %02x | signal %04x | snr %04x | "
-			"ber %08x | unc %08x | ",
-			status, signal, snr, ber, uncorrected_blocks);
+		if(!silent)
+			printf ("status %02x | signal %04x | snr %04x | "
+				"ber %08x | unc %08x | ",
+				status, signal, snr, ber, uncorrected_blocks);
 
-		if (status & FE_HAS_LOCK)
+		if (!silent && (status & FE_HAS_LOCK))
 			printf("FE_HAS_LOCK");
+		if (!silent)
+			printf("\n");
 
 		usleep(1000000);
 
-		printf("\n");
 	} while (!timeout_flag);
 
 	return 0;
 }
 
 
-static const char *usage = "\nusage: %s [-a adapter_num] [-f frontend_id] [-d demux_id] [-c conf_file] [-t timout_seconds] [-r] [-p] <channel name>\n\n";
+static const char *usage = "\nusage: %s [-a adapter_num] [-f frontend_id] [-d demux_id] [-c conf_file] [-t timout_seconds] [-r] [-p] [-s] <channel name>\n\n";
 
 
 int main(int argc, char **argv)
@@ -296,7 +299,7 @@ int main(int argc, char **argv)
 	int opt;
 	int rec_psi = 0;
 
-	while ((opt = getopt(argc, argv, "hrpnt:a:f:d:c:")) != -1) {
+	while ((opt = getopt(argc, argv, "hrpnst:a:f:d:c:")) != -1) {
 		switch (opt) {
 		case 'a':
 			adapter = strtoul(optarg, NULL, 0);
@@ -318,6 +321,9 @@ int main(int argc, char **argv)
 			break;
 		case 'c':
 			confname = optarg;
+			break;
+		case 's':
+			silent = 1;
 			break;
 		case '?':
 		case 'h':
@@ -341,7 +347,8 @@ int main(int argc, char **argv)
 	snprintf (DEMUX_DEV, sizeof(DEMUX_DEV),
 		  "/dev/dvb/adapter%i/demux%i", adapter, demux);
 
-	printf ("using '%s' and '%s'\n", FRONTEND_DEV, DEMUX_DEV);
+	if(!silent)
+		printf ("using '%s' and '%s'\n", FRONTEND_DEV, DEMUX_DEV);
 
 	if (!confname)
 	{
@@ -397,7 +404,8 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	printf ("video pid 0x%04x, audio pid 0x%04x\n", vpid, apid);
+	if(!silent)
+		printf ("video pid 0x%04x, audio pid 0x%04x\n", vpid, apid);
 	if (set_pesfilter (video_fd, vpid, DMX_PES_VIDEO, dvr) < 0)
 		return -1;
 
