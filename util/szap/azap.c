@@ -341,6 +341,11 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
+	if(!silent) {
+		printf("Attempting to tune to channel tagged %s\n", channel);
+		printf("Attempting use adapter %d\n", adapter);
+	}
+
 	snprintf (FRONTEND_DEV, sizeof(FRONTEND_DEV),
 		  "/dev/dvb/adapter%i/frontend%i", adapter, frontend);
 
