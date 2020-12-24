@@ -1119,7 +1119,7 @@ int main(int argc, char *argv[])
 	}
 
 	for( ; ; ) {
-		char c;
+		signed char c;
 
 		if(-1 == (c = getopt(argc, argv, "a:f:p:m:th"))) {
 			break;
