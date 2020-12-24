@@ -544,6 +544,11 @@ static int parse_ett(int dmxfd, int index, uint16_t pid)
 		eit = &channel->eit[index];
 
 		section_pattern = 0;
+		for (int s=0; s<eit->num_eit_sections; s++) {
+			if (eit->section[s].num_etms == 0)
+				section_pattern |= 1 << s;
+		}
+
 		while(section_pattern !=
 			(uint32_t)((1 << eit->num_eit_sections) - 1)) {
 			if(ctrl_c) {
@@ -1211,7 +1216,7 @@ int main(int argc, char *argv[])
 			if(0xFFFF != guide.ett_pid[i]) {
 				if(parse_ett(dmxfd, i, guide.ett_pid[i])) {
 					fprintf(stderr, "%s(): error calling "
-						"parse_eit()\n", __FUNCTION__);
+						"parse_ett()\n", __FUNCTION__);
 					return -1;
 				}
 			}
