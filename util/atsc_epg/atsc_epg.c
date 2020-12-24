@@ -539,6 +539,7 @@ static int parse_ett(int dmxfd, int index, uint16_t pid)
 		return 0;
 	}
 
+	atsc_scan_table(dmxfd, pid, tag, NULL);
 	for(c = 0; c < guide.num_channels; c++) {
 		channel = &guide.ch[c];
 		eit = &channel->eit[index];
@@ -554,7 +555,7 @@ static int parse_ett(int dmxfd, int index, uint16_t pid)
 			if(ctrl_c) {
 				return 0;
 			}
-			ret = atsc_scan_table(dmxfd, pid, tag, (void **)&ett);
+			ret = atsc_scan_table(dmxfd, 0xFFFF, tag, (void **)&ett);
 			fprintf(stdout, ".");
 			fflush(stdout);
 			if(0 > ret) {
@@ -689,6 +690,7 @@ static int parse_eit(int dmxfd, int index, uint16_t pid)
 	uint32_t eit_instance_pattern = 0;
 	int i, k, ret;
 
+	atsc_scan_table(dmxfd, pid, tag, NULL);
 	while(eit_instance_pattern !=
 		(uint32_t)((1 << guide.num_channels) - 1)) {
 		source_id = 0xFFFF;
@@ -696,7 +698,7 @@ static int parse_eit(int dmxfd, int index, uint16_t pid)
 		num_sections = -1;
 
 		do {
-			ret = atsc_scan_table(dmxfd, pid, tag, (void **)&eit);
+			ret = atsc_scan_table(dmxfd, 0xFFFF, tag, (void **)&eit);
 			fprintf(stdout, ".");
 			fflush(stdout);
 			if(0 > ret) {
@@ -1040,11 +1042,15 @@ static int atsc_scan_table(int dmxfd, uint16_t pid, enum atsc_section_tag tag,
 	memset(mask, 0, sizeof(mask));
 	filter[0] = tag;
 	mask[0] = 0xFF;
-	if(dvbdemux_set_section_filter(dmxfd, pid, filter, mask, 1, 1)) {
-		fprintf(stderr, "%s(): error calling atsc_scan_table()\n",
-			__FUNCTION__);
-		return -1;
+	if (pid != 0xFFFF) {
+		if(dvbdemux_set_section_filter(dmxfd, pid, filter, mask, 1, 1)) {
+			fprintf(stderr, "%s(): error calling atsc_scan_table()\n",
+				__FUNCTION__);
+			return -1;
+		}
 	}
+
+	if (table_section == NULL) return 0;
 
 	/* poll for data */
 	pollfd.fd = dmxfd;
